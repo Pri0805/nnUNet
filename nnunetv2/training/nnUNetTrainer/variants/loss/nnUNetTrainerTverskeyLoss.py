@@ -1,4 +1,4 @@
-from nnunetv2.training.loss.compound_losses import DC_and_Tversky_loss
+from nnunetv2.training.loss.compound_losses import CE_and_Tversky_loss
 from nnunetv2.training.loss.deep_supervision import DeepSupervisionWrapper
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 import numpy as np
