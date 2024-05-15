@@ -45,7 +45,7 @@ from nnunetv2.training.dataloading.data_loader_3d import nnUNetDataLoader3D
 from nnunetv2.training.dataloading.nnunet_dataset import nnUNetDataset
 from nnunetv2.training.dataloading.utils import get_case_identifiers, unpack_dataset
 from nnunetv2.training.logging.nnunet_logger import nnUNetLogger
-from nnunetv2.training.loss.compound_losses import DC_and_CE_loss, DC_and_BCE_loss
+from nnunetv2.training.loss.compound_losses import DC_and_CE_loss, DC_and_BCE_loss, CE_and_Tversky_loss
 from nnunetv2.training.loss.deep_supervision import DeepSupervisionWrapper
 from nnunetv2.training.loss.dice import get_tp_fp_fn_tn, MemoryEfficientSoftDiceLoss
 from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
@@ -348,16 +348,30 @@ class nnUNetTrainer(object):
             self.oversample_foreground_percent = oversample_percents[my_rank]
 
     def _build_loss(self):
-        if self.label_manager.has_regions:
-            loss = DC_and_BCE_loss({},
-                                   {'batch_dice': self.configuration_manager.batch_dice,
-                                    'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
-                                   use_ignore_label=self.label_manager.ignore_label is not None,
-                                   dice_class=MemoryEfficientSoftDiceLoss)
+        # if self.label_manager.has_regions:
+        #     loss = DC_and_BCE_loss({},
+        #                            {'batch_dice': self.configuration_manager.batch_dice,
+        #                             'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
+        #                            use_ignore_label=self.label_manager.ignore_label is not None,
+        #                            dice_class=MemoryEfficientSoftDiceLoss)
+        # else:
+        #     loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
+        #                            'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {}, weight_ce=1, weight_dice=1,
+        #                           ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
+
+        #### EDITING FOR TVERSKY LOSS ####
+
+         if self.label_manager.has_regions:
+            loss = CE_and_Tversky_loss(tversky_kwargs,
+                                       {'batch_dice': self.configuration_manager.batch_dice,
+                                        'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
+                                       use_ignore_label=self.label_manager.ignore_label is not None,
+                                       weight_ce=1, weight_tversky=1)
         else:
-            loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
-                                   'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {}, weight_ce=1, weight_dice=1,
-                                  ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
+            loss = CE_and_Tversky_loss({'batch_dice': self.configuration_manager.batch_dice,
+                                        'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, 
+                                       ce_kwargs, weight_ce=1, weight_tversky=1,
+                                       ignore_label=self.label_manager.ignore_label)
 
         # we give each output a weight which decreases exponentially (division by 2) as the resolution decreases
         # this gives higher resolution outputs more weight in the loss
