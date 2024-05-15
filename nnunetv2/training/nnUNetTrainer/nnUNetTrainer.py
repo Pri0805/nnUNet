@@ -361,6 +361,9 @@ class nnUNetTrainer(object):
 
         #### EDITING FOR TVERSKY LOSS ####
 
+        tversky_kwargs = {'alpha': 0.3, 'beta': 0.7, 'smooth': 1e-6}
+        ce_kwargs = {}
+
          if self.label_manager.has_regions:
             loss = CE_and_Tversky_loss(tversky_kwargs,
                                        {'batch_dice': self.configuration_manager.batch_dice,
